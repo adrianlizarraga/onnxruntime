@@ -667,7 +667,6 @@ output_models = [
 # Set the EP to use for compilation
 ep_devices = ort.get_ep_devices()
 selected_ep_device = next((ep_device for ep_device in ep_devices if ep_device.ep_name == contoso_ep.get_ep_names()[0]), None)
-assert selected_ep_device.device.metadata["is_virtual"] == "1"
 
 ep_options = {}  # EP-specific options
 session_options = ort.SessionOptions()
@@ -693,3 +692,8 @@ for i in range(len(input_models)):
 # Must only unregister a library after all `ModelCompiler` objects that use the library have been released.
 ort.unregister_execution_provider_library(ep_lib_registration_name)
 ```
+
+#### References
+- [Plugin EP library documentation](./plugin-ep-libraries.md)
+- [Additional Python usage examples in unit tests](https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/test/python/onnxruntime_test_python_compile_api.py)
+- [Python ModelCompiler class](https://github.com/microsoft/onnxruntime/blob/a5ba2ba3998820dd8da111c90c420479aac7a11e/onnxruntime/python/onnxruntime_inference_collection.py#L680-L709)
