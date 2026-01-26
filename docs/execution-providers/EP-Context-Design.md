@@ -385,7 +385,7 @@ To use the dumped EPContext models with weight sharing enabled, ONNX Runtime inf
 ORT 1.22 introduced an explicit [model compilation API](https://github.com/microsoft/onnxruntime/blob/a5ba2ba3998820dd8da111c90c420479aac7a11e/onnxruntime/python/onnxruntime_inference_collection.py#L680-L709) that enables additional compilation options:
 - Read input model from a file or a buffer.
 - Write output model to a file, a buffer, or an output stream.
-- Provide a callback function to specify the location of each ONNX initializers in the output model.
+- Provide a callback function to specify the location of each ONNX initializer in the output model.
 - Set compilation flags: "error if no nodes compiled", "error if output file already exists", etc.
 
 ### Usage example: compiling a model (from file) to an output stream
@@ -438,7 +438,7 @@ with open(output_model_path, "wb") as output_model_fd, \
     #    selected_ep_device = next((ep_device for ep_device in ep_devices if ep_device.ep_name == "SomeEp"), None)
     #
     #    ep_options = {}
-    #    session_options.add_provider_for_devices(selected_ep_devices, ep_options)
+    #    session_options.add_provider_for_devices([selected_ep_device], ep_options)
     #
     # Example for legacy "provider-bridge" EP:
     #    ep_options = {}
@@ -485,7 +485,7 @@ to create virtual hardware devices that an application can use to compile models
 
 #### Application code
 An application grants a plugin EP library permission to create virtual hardware device by using a library registration name
-that ends in the ".virtual" suffix:
+that ends in the ".virtual" suffix. A virtual hardware device created by an EP will have the metadata entry "is_virtual" set to "1".
 
 ```python
 import onnxruntime as ort
@@ -496,13 +496,15 @@ ep_lib_registration_name = "contoso_ep_lib.virtual"
 ort.register_execution_provider_library(ep_lib_registration_name, contoso_ep.get_library_path())
 
 # Set the EP to use for compilation
+ep_name = contoso_ep.get_ep_names()[0]
 ep_devices = ort.get_ep_devices()
-selected_ep_device = next((ep_device for ep_device in ep_devices if ep_device.ep_name == contoso_ep.get_ep_names()[0]), None)
-assert selected_ep_device.device.metadata["is_virtual"] == "1"
+selected_ep_device = next((ep_device for ep_device in ep_devices
+                           if ep_device.ep_name == ep_name and ep_device.device.metadata["is_virtual"] == "1"), None)
+assert selected_ep_device is not None, "Did not find ep device for target EP"
 
 ep_options = {}  # EP-specific options
 session_options = ort.SessionOptions()
-session_options.add_provider_for_devices(selected_ep_devices, ep_options)
+session_options.add_provider_for_devices([selected_ep_device], ep_options)
 
 # Compile the model
 model_compiler = ort.ModelCompiler(
@@ -658,19 +660,17 @@ ep_lib_registration_name = "contoso_ep_lib"
 ort.register_execution_provider_library(ep_lib_registration_name, contoso_ep.get_library_path())
 
 # The models that share resources
-input_models = [get_name("input_model_0.onnx"), get_name("input_model_1.onnx")]
-output_models = [
-    os.path.join(self._tmp_dir_path, "output_model_0.onnx"),
-    os.path.join(self._tmp_dir_path, "output_model_1.onnx"),
-]
+input_models = ["input_model_0.onnx", "input_model_1.onnx"]
+output_models = ["output_model_0.onnx", "output_model_1.onnx"]
 
 # Set the EP to use for compilation
 ep_devices = ort.get_ep_devices()
 selected_ep_device = next((ep_device for ep_device in ep_devices if ep_device.ep_name == contoso_ep.get_ep_names()[0]), None)
+assert selected_ep_device is not None, "Did not find ep device for target EP"
 
 ep_options = {}  # EP-specific options
 session_options = ort.SessionOptions()
-session_options.add_provider_for_devices(selected_ep_devices, ep_options)
+session_options.add_provider_for_devices([selected_ep_device], ep_options)
 
 # Set option that tells EP to share resources (e.g., weights) across sessions.
 session_options.add_session_config_entry("ep.share_ep_contexts", "1")
